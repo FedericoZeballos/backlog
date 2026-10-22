@@ -10,6 +10,7 @@ import { authRoutes } from './modules/auth/routes';
 import { edgeRoutes } from './modules/edges/routes';
 import { nodeRoutes } from './modules/nodes/routes';
 import { commentRoutes } from './modules/comments/routes';
+import { graphRoutes } from './modules/graph/routes';
 import { statusRoutes } from './modules/statuses/routes';
 import { taskRoutes } from './modules/tasks/routes';
 
@@ -67,6 +68,7 @@ export async function buildApp(opts: BuildOptions = {}) {
       await api.register(edgeRoutes);
       await api.register(taskRoutes);
       await api.register(commentRoutes);
+      await api.register(graphRoutes);
     },
     { prefix: '/api' },
   );

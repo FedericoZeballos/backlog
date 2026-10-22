@@ -18,7 +18,7 @@ const { createUser } = await import('../src/modules/users/service');
 const { buildApp } = await import('../src/app');
 
 await prisma.$executeRawUnsafe(
-  'TRUNCATE "Comment", "ActivityLog", "Edge", "Node", "Status", "Invitation", "Session", "User" CASCADE',
+  'TRUNCATE "NodeLayout", "Comment", "ActivityLog", "Edge", "Node", "Status", "Invitation", "Session", "User" CASCADE',
 );
 await prisma.$transaction((tx) => createUser(tx, { ...E2E_USER, role: 'ADMIN' }));
 

@@ -128,6 +128,33 @@ export type CreateEdgeInput = z.infer<typeof CreateEdgeInput>;
 
 export const IdParam = z.object({ id: z.uuid() });
 
+// ---------- Graph ----------
+
+export const EDGE_CATEGORIES = ['STRUCTURAL', 'EXECUTION', 'CONCEPTUAL'] as const;
+
+export const GraphQuery = z.object({
+  /** Nodes to center the view on; empty means the whole graph. */
+  focus: csv(z.uuid()).optional(),
+  /** Hops to follow from the focus nodes. */
+  depth: z.coerce.number().int().min(1).max(4).default(1),
+  type: csv(z.enum(NODE_TYPES)).optional(),
+  category: csv(z.enum(EDGE_CATEGORIES)).optional(),
+  hideDone: boolString.default(false),
+  includeInbox: boolString.default(false),
+  /** Saved positions to return (see NodeLayout). */
+  viewKey: z.string().min(1).max(200).default('global'),
+});
+export type GraphQuery = z.infer<typeof GraphQuery>;
+
+export const SaveLayoutInput = z.object({
+  viewKey: z.string().min(1).max(200),
+  positions: z
+    .array(z.object({ nodeId: z.uuid(), x: z.number().finite(), y: z.number().finite() }))
+    .min(1)
+    .max(2_000),
+});
+export type SaveLayoutInput = z.infer<typeof SaveLayoutInput>;
+
 // ---------- Statuses ----------
 
 export const CreateStatusInput = z.object({

@@ -92,6 +92,7 @@ model User {
   edges              Edge[]
   statuses           Status[]
   comments           Comment[]
+  layouts            NodeLayout[]
   activity           ActivityLog[]
   invitationsCreated Invitation[] @relation("InvitationCreatedBy")
   invitationUsed     Invitation?  @relation("InvitationUsedBy")
@@ -172,6 +173,7 @@ model Node {
   incoming Edge[]        @relation("EdgeTarget")
   activity ActivityLog[]
   comments Comment[]
+  layouts  NodeLayout[]
 
   // Search indexes (full text + trigram) are created in SQL: see migration *_search_comments.
   @@unique([ownerId, slug])
@@ -210,6 +212,20 @@ model Comment {
   updatedAt DateTime @updatedAt
 
   @@index([nodeId, createdAt])
+}
+
+/// Graph positions, kept apart from node data. `viewKey` is "global" or "focus:<ids>".
+model NodeLayout {
+  ownerId   String   @db.Uuid
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  viewKey   String
+  nodeId    String   @db.Uuid
+  node      Node     @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  x         Float
+  y         Float
+  updatedAt DateTime @updatedAt
+
+  @@id([ownerId, viewKey, nodeId])
 }
 
 model ActivityLog {

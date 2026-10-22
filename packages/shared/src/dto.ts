@@ -77,6 +77,43 @@ export interface NodeDetailDTO {
   relations: RelationDTO[];
 }
 
+export interface EdgeDTO {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  type: EdgeType;
+  category: EdgeCategory;
+  note: string | null;
+  createdBy: Actor;
+  createdAt: string;
+}
+
+export interface GraphNodeDTO extends NodeDTO {
+  /** Active relations not included in this view (the node can be expanded). */
+  hiddenRelations: number;
+}
+
+export interface GraphDTO {
+  nodes: GraphNodeDTO[];
+  edges: EdgeDTO[];
+  positions: Record<string, { x: number; y: number }>;
+  /** The global view hit the node limit; focus on something to see the rest. */
+  truncated: boolean;
+}
+
+export type GraphIssueKind =
+  | 'ISOLATED'
+  | 'DONE_WITH_OPEN_DEPENDENCY'
+  | 'DONE_PARENT_WITH_OPEN_CHILDREN'
+  | 'DEPENDS_ON_ARCHIVED'
+  | 'POSSIBLE_DUPLICATE';
+
+export interface GraphIssueDTO {
+  kind: GraphIssueKind;
+  nodes: NodeBrief[];
+  edgeId?: string;
+}
+
 export interface StatusDTO extends StatusRef {
   order: number;
   isDefault: boolean;
