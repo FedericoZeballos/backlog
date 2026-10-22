@@ -282,9 +282,16 @@ Cuerpo en Markdown…
 
 Al cerrar cada fase se actualiza `docs/PROGRESS.md` con lo implementado, las pruebas ejecutadas (y su resultado), lo pendiente y cómo verificarlo.
 
-## 11. Preguntas abiertas (no bloquean el avance)
+## 11. Decisiones confirmadas y preguntas abiertas
 
-1. **Hosting final**: ¿Railway, Render u otro? Afecta solo la guía de despliegue (fase 7).
-2. **Ollama en producción**: con la app hosteada, Ollama solo funciona si hay un servidor Ollama accesible desde el backend. En desarrollo local funciona directo. ¿Tenés o vas a tener uno?
-3. **Registro de usuarios**: ¿registro abierto o por invitación? Por defecto: registro abierto que se puede desactivar con la variable `ALLOW_SIGNUP=false`.
-4. **Idioma de la interfaz**: por defecto en español rioplatense, con textos centralizados por si después se quiere i18n.
+Confirmado (2026-10-21):
+- **Entorno inicial: local.** El hosting se decide más adelante (afecta solo la fase 7).
+- **Ollama**: se prueba en local; se instala en la PC del usuario en la fase 5. La app funciona sin él (Claude o modo `fake`).
+- **Registro solo por invitación.** Roles `ADMIN` y `USER`:
+  - El primer admin se crea con `npm run create-admin` (no existe registro público).
+  - El admin genera invitaciones (link con token de un solo uso, con vencimiento y opcionalmente atado a un email), las revoca, y lista o desactiva usuarios.
+  - El admin **no accede a los datos (nodos, conversaciones) de otros usuarios**; usa la app como un usuario más.
+  - Tabla `Invitation`: `tokenHash` (único), `email?`, `role`, `createdById`, `expiresAt`, `usedAt?`, `usedById?`. `User` suma `role` y `disabledAt?` (un usuario desactivado pierde sus sesiones).
+
+Abierto:
+1. **Idioma de la interfaz**: por defecto español rioplatense, con textos centralizados por si después se quiere i18n.
