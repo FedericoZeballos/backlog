@@ -81,7 +81,10 @@ export async function listNodes(ownerId: string, q: ListNodesQuery) {
   return { items: matches.slice(q.offset, q.offset + q.limit).map(toNodeDTO), total: matches.length };
 }
 
-const briefNode = { select: { id: true, title: true, type: true, status: { select: { name: true, category: true } } } };
+// `version` and status let the client complete a related task without fetching it first.
+const briefNode = {
+  select: { id: true, title: true, type: true, version: true, status: { select: { id: true, name: true, category: true } } },
+};
 
 export async function getNode(ownerId: string, id: string) {
   const node = await prisma.node.findFirst({ where: { id, ownerId }, include: nodeInclude });

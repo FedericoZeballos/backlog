@@ -1,0 +1,64 @@
+@import 'tailwindcss';
+
+/* Semantic tokens: utilities like bg-surface / text-muted switch with the color scheme. */
+@theme {
+  --color-bg: #f7f7f5;
+  --color-surface: #ffffff;
+  --color-subtle: #f0f0ed;
+  --color-line: #e3e3df;
+  --color-fg: #1f2328;
+  --color-muted: #6b6f76;
+  --color-accent: #4f46e5;
+  --color-accent-fg: #ffffff;
+  --color-danger: #c4322b;
+  --color-ok: #1a7f4b;
+  --color-warn: #b25e09;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #121316;
+    --color-surface: #1a1b1f;
+    --color-subtle: #23252a;
+    --color-line: #2f3137;
+    --color-fg: #e8e9ec;
+    --color-muted: #9a9ea6;
+    --color-accent: #8b85ff;
+    --color-accent-fg: #0f0f14;
+    --color-danger: #f0766f;
+    --color-ok: #4cc38a;
+    --color-warn: #f0a050;
+  }
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm text-fg outline-none placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/20;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-fg hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply border-accent bg-accent text-accent-fg hover:bg-accent/90;
+  }
+  .btn-danger {
+    @apply border-danger/40 text-danger hover:bg-danger/10;
+  }
+  .btn-ghost {
+    @apply border-transparent bg-transparent hover:bg-subtle;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium text-muted;
+  }
+  .card {
+    @apply rounded-lg border border-line bg-surface;
+  }
+}

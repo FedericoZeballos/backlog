@@ -29,30 +29,39 @@ Terminal 2, crear tu usuario administrador (te pide la contraseña):
 npm run create-admin -- --email vos@ejemplo.com --name "Tu nombre"
 ```
 
-Después levantá la API:
+Después levantá la app (API + web):
 
 ```bash
 npm run dev
 ```
 
-La API queda en `http://localhost:3000` (health check: `/api/health`). La interfaz web llega en la fase 3.
+Abrí **http://localhost:5173** e iniciá sesión con el usuario que creaste. La API queda en `http://localhost:3000` y la web le pasa las llamadas `/api` a través de un proxy.
+
+### Atajos
+
+- `N`: captura rápida desde cualquier pantalla.
+- `Esc`: cierra el panel de detalle.
+- El elemento abierto queda en la URL (`?node=…`), así que podés cambiar de vista sin perderlo.
 
 ## Comandos
 
 | Comando | Qué hace |
 |---|---|
 | `npm run db` | Levanta PostgreSQL local (puerto 5433) y aplica migraciones |
-| `npm run dev` | API con recarga automática |
+| `npm run dev` | API y web con recarga automática |
 | `npm run create-admin -- --email … --name …` | Crea un administrador (o promueve un usuario existente) |
 | `npm test` | Tests unitarios y de integración; usan su propio PostgreSQL en el puerto 5434 |
+| `npm run e2e` | Tests de punta a punta en Chromium, en escritorio y móvil. Levantan su propia API y su base en el puerto 5435. La primera vez, corré `npx playwright install chromium` desde `apps/web` |
 | `npm run typecheck` | Chequeo de tipos de todos los paquetes |
+| `npm run build` | Build de producción de la web |
 | `npm run migrate:dev -w @backlog/api` | Crea una migración nueva después de cambiar `schema.prisma` (con `npm run db` corriendo) |
 
 ## Estructura
 
 ```
 apps/api          API (Fastify + Prisma + PostgreSQL)
-packages/shared   Tipos, enums, reglas de relaciones y esquemas Zod compartidos
+apps/web          Interfaz (React + Vite + TanStack Query + Tailwind)
+packages/shared   Tipos, enums, reglas de relaciones, esquemas Zod y contratos de la API
 docs/             Auditoría, plan y avance
 ```
 
