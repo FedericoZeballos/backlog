@@ -1,0 +1,213 @@
+// Enums must stay in sync with packages/shared/src/enums.ts (see test/enums.test.ts).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum NodeType {
+  AREA
+  GOAL
+  PROJECT
+  TASK
+  IDEA
+  PROBLEM
+  NOTE
+  DECISION
+  RESOURCE
+  INBOX_ITEM
+}
+
+enum EdgeType {
+  CONTAINS
+  PARENT_OF
+  DEPENDS_ON
+  RELATED_TO
+  DOCUMENTS
+  DEVELOPS
+  INFORMS
+  SUPPORTS
+  DERIVED_FROM
+  DUPLICATES
+}
+
+enum Priority {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ValueSource {
+  USER
+  AI_SUGGESTED
+}
+
+enum StatusCategory {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  DONE
+}
+
+enum Actor {
+  USER
+  AI
+}
+
+enum ActivityAction {
+  CREATE
+  UPDATE
+  DELETE
+  RESTORE
+  PURGE
+  COMPLETE
+  REOPEN
+  LINK
+  UNLINK
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         UserRole  @default(USER)
+  disabledAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions           Session[]
+  nodes              Node[]
+  edges              Edge[]
+  statuses           Status[]
+  activity           ActivityLog[]
+  invitationsCreated Invitation[] @relation("InvitationCreatedBy")
+  invitationUsed     Invitation?  @relation("InvitationUsedBy")
+}
+
+/// `id` is the SHA-256 of the cookie token, so a DB leak does not leak sessions.
+model Session {
+  id        String   @id
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Invitation {
+  id          String    @id @default(uuid()) @db.Uuid
+  tokenHash   String    @unique
+  email       String?
+  role        UserRole  @default(USER)
+  createdById String    @db.Uuid
+  createdBy   User      @relation("InvitationCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  usedAt      DateTime?
+  usedById    String?   @unique @db.Uuid
+  usedBy      User?     @relation("InvitationUsedBy", fields: [usedById], references: [id], onDelete: SetNull)
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model Status {
+  id        String         @id @default(uuid()) @db.Uuid
+  ownerId   String         @db.Uuid
+  owner     User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name      String
+  category  StatusCategory
+  order     Int
+  isDefault Boolean        @default(false)
+  createdAt DateTime       @default(now())
+
+  nodes Node[]
+
+  @@unique([ownerId, name])
+}
+
+model Node {
+  id             String       @id @default(uuid()) @db.Uuid
+  ownerId        String       @db.Uuid
+  owner          User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  type           NodeType     @default(INBOX_ITEM)
+  title          String
+  body           String       @default("")
+  /// Unique per owner; used as the Markdown file name for Obsidian.
+  slug           String
+  statusId       String?      @db.Uuid
+  status         Status?      @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  priority       Priority?
+  prioritySource ValueSource?
+  dueDate        DateTime?    @db.Date
+  outcome        String?
+  doneCriteria   String?
+  nextAction     String?
+  effort         Int?
+  effortSource   ValueSource?
+  url            String?
+  /// false while the item sits unprocessed in the inbox.
+  processed      Boolean      @default(true)
+  completedAt    DateTime?
+  archivedAt     DateTime?
+  /// Soft delete (trash). Edges of a deleted node are hidden, not removed.
+  deletedAt      DateTime?
+  version        Int          @default(1)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  outgoing Edge[]        @relation("EdgeSource")
+  incoming Edge[]        @relation("EdgeTarget")
+  activity ActivityLog[]
+
+  @@unique([ownerId, slug])
+  @@index([ownerId, type])
+  @@index([ownerId, deletedAt])
+  @@index([ownerId, processed])
+  @@index([ownerId, dueDate])
+}
+
+model Edge {
+  id        String   @id @default(uuid()) @db.Uuid
+  ownerId   String   @db.Uuid
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  sourceId  String   @db.Uuid
+  source    Node     @relation("EdgeSource", fields: [sourceId], references: [id], onDelete: Cascade)
+  targetId  String   @db.Uuid
+  target    Node     @relation("EdgeTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  type      EdgeType
+  note      String?
+  createdBy Actor    @default(USER)
+  createdAt DateTime @default(now())
+
+  @@unique([sourceId, targetId, type])
+  @@index([ownerId, sourceId])
+  @@index([ownerId, targetId])
+}
+
+model ActivityLog {
+  id        String         @id @default(uuid()) @db.Uuid
+  ownerId   String         @db.Uuid
+  owner     User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  actor     Actor          @default(USER)
+  action    ActivityAction
+  nodeId    String?        @db.Uuid
+  node      Node?          @relation(fields: [nodeId], references: [id], onDelete: SetNull)
+  /// No FK: edges are hard-deleted but their history stays.
+  edgeId    String?        @db.Uuid
+  diff      Json?
+  createdAt DateTime       @default(now())
+
+  @@index([ownerId, nodeId, createdAt])
+}

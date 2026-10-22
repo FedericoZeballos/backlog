@@ -1,0 +1,24 @@
+{
+  "name": "backlog",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "db": "npm run db -w @backlog/api",
+    "dev": "npm run dev -w @backlog/api",
+    "create-admin": "npm run create-admin -w @backlog/api --",
+    "test": "npm test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.12"
+  }
+}
