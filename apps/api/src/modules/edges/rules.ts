@@ -2,7 +2,7 @@ import { checkRelation, edgeTypesInCategory, RELATION_RULES, type EdgeType, type
 import { AppError } from '../../lib/errors';
 import type { Tx } from '../../lib/prisma';
 
-const STRUCTURAL_TYPES = edgeTypesInCategory('STRUCTURAL');
+export const STRUCTURAL_TYPES = edgeTypesInCategory('STRUCTURAL');
 
 /** Edges whose two endpoints are not in the trash. */
 export const activeEdgeWhere = { source: { deletedAt: null }, target: { deletedAt: null } } as const;

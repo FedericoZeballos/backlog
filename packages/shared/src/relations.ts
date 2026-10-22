@@ -122,6 +122,11 @@ export function edgeTypesInCategory(category: EdgeCategory): EdgeType[] {
   );
 }
 
+/** The structural relation used to put `child` under `parent`: subtasks for task→task, containment otherwise. */
+export function structuralTypeFor(parentType: NodeType, childType: NodeType): EdgeType {
+  return parentType === 'TASK' && childType === 'TASK' ? 'PARENT_OF' : 'CONTAINS';
+}
+
 export type RelationCheck = { ok: true } | { ok: false; reason: string };
 
 export function checkRelation(type: EdgeType, sourceType: NodeType, targetType: NodeType): RelationCheck {

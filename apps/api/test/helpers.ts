@@ -12,7 +12,7 @@ export function buildTestApp() {
 
 export async function resetDb() {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE "ActivityLog", "Edge", "Node", "Status", "Invitation", "Session", "User" CASCADE',
+    'TRUNCATE "Comment", "ActivityLog", "Edge", "Node", "Status", "Invitation", "Session", "User" CASCADE',
   );
 }
 
@@ -35,11 +35,12 @@ export function cookieHeader(res: { cookies: { name: string; value: string }[] }
 
 /** Small client bound to one session. */
 export function client(app: FastifyInstance, cookie: string) {
-  const call = (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, payload?: unknown) =>
+  const call = (method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', url: string, payload?: unknown) =>
     app.inject({ method, url: `/api${url}`, headers: { cookie }, payload: payload as object | undefined });
   return {
     get: (url: string) => call('GET', url),
     post: (url: string, payload?: unknown) => call('POST', url, payload ?? {}),
+    put: (url: string, payload: unknown) => call('PUT', url, payload),
     patch: (url: string, payload: unknown) => call('PATCH', url, payload),
     del: (url: string) => call('DELETE', url),
     async node(payload: Record<string, unknown>) {

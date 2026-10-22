@@ -62,8 +62,18 @@ export const CreateNodeInput = z.object({
   effortSource: nodeFields.effortSource.optional(),
   url: nodeFields.url.optional(),
   processed: z.boolean().optional(),
+  /** Creates the structural relation (CONTAINS / PARENT_OF) in the same transaction. */
+  parentId: z.uuid().optional(),
 });
 export type CreateNodeInput = z.infer<typeof CreateNodeInput>;
+
+export const SetParentInput = z.object({ parentId: z.uuid().nullable() });
+export type SetParentInput = z.infer<typeof SetParentInput>;
+
+export const SimilarQuery = z.object({
+  title: trimmed(300).min(3),
+  excludeId: z.uuid().optional(),
+});
 
 /** `null` clears an optional field; `version` enables optimistic concurrency. */
 export const UpdateNodeInput = z.object({
@@ -117,3 +127,37 @@ export const CreateEdgeInput = z.object({
 export type CreateEdgeInput = z.infer<typeof CreateEdgeInput>;
 
 export const IdParam = z.object({ id: z.uuid() });
+
+// ---------- Statuses ----------
+
+export const CreateStatusInput = z.object({
+  name: trimmed(60).min(1),
+  category: z.enum(STATUS_CATEGORIES),
+});
+export type CreateStatusInput = z.infer<typeof CreateStatusInput>;
+
+export const UpdateStatusInput = z.object({
+  name: trimmed(60).min(1).optional(),
+  category: z.enum(STATUS_CATEGORIES).optional(),
+  isDefault: z.literal(true).optional(),
+});
+export type UpdateStatusInput = z.infer<typeof UpdateStatusInput>;
+
+export const ReorderStatusesInput = z.object({ ids: z.array(z.uuid()).min(1) });
+
+export const DeleteStatusQuery = z.object({ moveTo: z.uuid().optional() });
+
+// ---------- Comments ----------
+
+export const CommentInput = z.object({ body: trimmed(20_000).min(1) });
+
+// ---------- Views ----------
+
+export const ViewQuery = z.object({
+  /** The client's local date, so "today" matches the user's timezone. */
+  date: isoDate,
+  /** The client's local midnight as an ISO timestamp (for "completed today"). */
+  since: z.iso.datetime({ offset: true }).optional(),
+  days: z.coerce.number().int().min(1).max(90).default(14),
+});
+export type ViewQuery = z.infer<typeof ViewQuery>;

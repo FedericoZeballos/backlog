@@ -91,6 +91,7 @@ model User {
   nodes              Node[]
   edges              Edge[]
   statuses           Status[]
+  comments           Comment[]
   activity           ActivityLog[]
   invitationsCreated Invitation[] @relation("InvitationCreatedBy")
   invitationUsed     Invitation?  @relation("InvitationUsedBy")
@@ -170,7 +171,9 @@ model Node {
   outgoing Edge[]        @relation("EdgeSource")
   incoming Edge[]        @relation("EdgeTarget")
   activity ActivityLog[]
+  comments Comment[]
 
+  // Search indexes (full text + trigram) are created in SQL: see migration *_search_comments.
   @@unique([ownerId, slug])
   @@index([ownerId, type])
   @@index([ownerId, deletedAt])
@@ -194,6 +197,19 @@ model Edge {
   @@unique([sourceId, targetId, type])
   @@index([ownerId, sourceId])
   @@index([ownerId, targetId])
+}
+
+model Comment {
+  id        String   @id @default(uuid()) @db.Uuid
+  ownerId   String   @db.Uuid
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  nodeId    String   @db.Uuid
+  node      Node     @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([nodeId, createdAt])
 }
 
 model ActivityLog {

@@ -2,6 +2,7 @@ import {
   checkRelation,
   edgeCategory,
   isActionable,
+  structuralTypeFor,
   type Actor,
   type CreateNodeInput,
   type ListNodesQuery,
@@ -13,13 +14,14 @@ import { logActivity } from '../../lib/activity';
 import { AppError, notFound } from '../../lib/errors';
 import { lockOwner, prisma, type Tx } from '../../lib/prisma';
 import { uniqueSlug } from '../../lib/slug';
-import { activeEdgeWhere, assertEdgeAllowed } from '../edges/rules';
+import { activeEdgeWhere, assertEdgeAllowed, STRUCTURAL_TYPES } from '../edges/rules';
+import { searchNodeIds } from './search';
 
-const nodeInclude = {
+export const nodeInclude = {
   status: { select: { id: true, name: true, category: true } },
 } satisfies Prisma.NodeInclude;
 
-type NodeRow = Prisma.NodeGetPayload<{ include: typeof nodeInclude }>;
+export type NodeRow = Prisma.NodeGetPayload<{ include: typeof nodeInclude }>;
 
 const toDateOnly = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 const fromDateOnly = (s: string) => new Date(`${s}T00:00:00.000Z`);
@@ -61,18 +63,22 @@ export async function listNodes(ownerId: string, q: ListNodesQuery) {
     ...(q.statusCategory && { status: { category: { in: q.statusCategory } } }),
     ...(q.archived === 'exclude' && { archivedAt: null }),
     ...(q.archived === 'only' && { archivedAt: { not: null } }),
-    ...(q.q && {
-      OR: [
-        { title: { contains: q.q, mode: 'insensitive' } },
-        { body: { contains: q.q, mode: 'insensitive' } },
-      ],
-    }),
   };
-  const [items, total] = await prisma.$transaction([
-    prisma.node.findMany({ where, include: nodeInclude, orderBy: { createdAt: 'desc' }, take: q.limit, skip: q.offset }),
-    prisma.node.count({ where }),
-  ]);
-  return { items: items.map(toNodeDTO), total };
+
+  if (!q.q) {
+    const [items, total] = await prisma.$transaction([
+      prisma.node.findMany({ where, include: nodeInclude, orderBy: { createdAt: 'desc' }, take: q.limit, skip: q.offset }),
+      prisma.node.count({ where }),
+    ]);
+    return { items: items.map(toNodeDTO), total };
+  }
+
+  // Search: relevance order comes from SQL, filters from Prisma.
+  const rankedIds = await searchNodeIds(ownerId, q.q);
+  const matches = await prisma.node.findMany({ where: { ...where, id: { in: rankedIds } }, include: nodeInclude });
+  const rank = new Map(rankedIds.map((id, i) => [id, i]));
+  matches.sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
+  return { items: matches.slice(q.offset, q.offset + q.limit).map(toNodeDTO), total: matches.length };
 }
 
 const briefNode = { select: { id: true, title: true, type: true, status: { select: { name: true, category: true } } } };
@@ -109,7 +115,7 @@ export async function createNode(ownerId: string, input: CreateNodeInput, actor:
   return prisma.$transaction(async (tx) => {
     await lockOwner(tx, ownerId);
     const status = await resolveStatus(tx, ownerId, input.type, input.statusId);
-    const { statusId: _s, dueDate, processed, ...fields } = input;
+    const { statusId: _s, dueDate, processed, parentId, ...fields } = input;
 
     const node = await tx.node.create({
       data: {
@@ -125,7 +131,49 @@ export async function createNode(ownerId: string, input: CreateNodeInput, actor:
       include: nodeInclude,
     });
     await logActivity(tx, { ownerId, actor, action: 'CREATE', nodeId: node.id, diff: { after: snapshot(node) } as Prisma.InputJsonValue });
+    if (parentId) await attachToParent(tx, ownerId, node, parentId, actor);
     return toNodeDTO(node);
+  });
+}
+
+/** Creates the structural relation parent → child. Caller holds the owner lock. */
+async function attachToParent(tx: Tx, ownerId: string, child: { id: string; type: NodeType }, parentId: string, actor: Actor) {
+  const parent = await tx.node.findFirst({ where: { id: parentId, ownerId, deletedAt: null }, select: { id: true, type: true } });
+  if (!parent) throw notFound('Elemento padre');
+  const type = structuralTypeFor(parent.type, child.type);
+  await assertEdgeAllowed(tx, { sourceId: parent.id, targetId: child.id, type }, parent.type, child.type);
+  const edge = await tx.edge.create({ data: { ownerId, sourceId: parent.id, targetId: child.id, type, createdBy: actor } });
+  await logActivity(tx, {
+    ownerId,
+    actor,
+    action: 'LINK',
+    nodeId: parent.id,
+    edgeId: edge.id,
+    diff: { after: { sourceId: parent.id, targetId: child.id, type } },
+  });
+}
+
+/** Moves a node in the hierarchy (or detaches it with `parentId: null`) atomically. */
+export async function setParent(ownerId: string, id: string, parentId: string | null, actor: Actor = 'USER') {
+  await prisma.$transaction(async (tx) => {
+    await lockOwner(tx, ownerId);
+    const node = await tx.node.findFirst({ where: { id, ownerId, deletedAt: null }, select: { id: true, type: true } });
+    if (!node) throw notFound();
+
+    const current = await tx.edge.findFirst({ where: { targetId: id, type: { in: STRUCTURAL_TYPES }, ...activeEdgeWhere } });
+    if (current?.sourceId === parentId) return;
+    if (current) {
+      await tx.edge.delete({ where: { id: current.id } });
+      await logActivity(tx, {
+        ownerId,
+        actor,
+        action: 'UNLINK',
+        nodeId: current.sourceId,
+        edgeId: current.id,
+        diff: { before: { sourceId: current.sourceId, targetId: id, type: current.type } },
+      });
+    }
+    if (parentId) await attachToParent(tx, ownerId, node, parentId, actor);
   });
 }
 

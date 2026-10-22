@@ -9,7 +9,9 @@ import { adminRoutes } from './modules/admin/routes';
 import { authRoutes } from './modules/auth/routes';
 import { edgeRoutes } from './modules/edges/routes';
 import { nodeRoutes } from './modules/nodes/routes';
+import { commentRoutes } from './modules/comments/routes';
 import { statusRoutes } from './modules/statuses/routes';
+import { taskRoutes } from './modules/tasks/routes';
 
 interface BuildOptions {
   logger?: boolean;
@@ -63,6 +65,8 @@ export async function buildApp(opts: BuildOptions = {}) {
       await api.register(statusRoutes);
       await api.register(nodeRoutes);
       await api.register(edgeRoutes);
+      await api.register(taskRoutes);
+      await api.register(commentRoutes);
     },
     { prefix: '/api' },
   );
