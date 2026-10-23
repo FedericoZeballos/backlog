@@ -14,6 +14,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.1.0",
     "@backlog/shared": "*",
     "@fastify/cookie": "^11.1.3",
     "@fastify/rate-limit": "^11.2.1",
