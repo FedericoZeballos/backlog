@@ -7,6 +7,7 @@ import {
   Lock,
   LogOut,
   Menu,
+  Network,
   NotebookPen,
   Plus,
   Search,
@@ -45,6 +46,7 @@ const NAV: NavItem[][] = [
   [
     { to: '/projects', label: 'Proyectos', icon: FolderTree },
     { to: '/goals', label: 'Objetivos', icon: Target },
+    { to: '/graph', label: 'Grafo', icon: Network },
     { to: '/notes', label: 'Notas y decisiones', icon: NotebookPen },
   ],
   [
@@ -67,6 +69,7 @@ export function Layout() {
   // Keep the selected node when switching views.
   const nodeParam = params.get('node');
   const keep = nodeParam ? `?node=${nodeParam}` : '';
+  const fullBleed = location.pathname === '/graph';
 
   useEffect(() => setMenuOpen(false), [location.pathname]);
 
@@ -140,7 +143,8 @@ export function Layout() {
             <span className="hidden sm:inline">Capturar</span>
           </button>
         </header>
-        <main className="mx-auto max-w-4xl px-4 py-6 md:px-8">
+        {/* The graph uses the full area below the header; other pages are a readable column. */}
+        <main className={fullBleed ? 'h-[calc(100dvh-57px)]' : 'mx-auto max-w-4xl px-4 py-6 md:px-8'}>
           <Outlet />
         </main>
       </div>

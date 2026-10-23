@@ -105,4 +105,68 @@ Seguir el [README](../README.md) y probar con curl, o correr `npm test`.
 - El grafo interactivo es la fase 4. Las listas, el árbol y el panel ya sirven como alternativa sin grafo.
 - Si Playwright corta sus servidores sin cerrarlos bien, el Postgres de e2e puede quedar corriendo. La próxima ejecución lo detecta y lo detiene.
 
-## Fase 4: grafo interactivo ⏳
+## Fase 4: grafo interactivo ✅ (2026-10-22)
+
+### Implementado
+
+**API**
+- `GET /graph`:
+  - Vista global, o vecindario de 1 a 4 saltos desde uno o varios nodos.
+  - Filtros por tipo, categoría de relación y completadas.
+  - Excluye la papelera, lo archivado y, por defecto, lo que sigue sin clasificar.
+  - Cada nodo informa cuántas relaciones quedan fuera de la vista, para poder expandirlo.
+  - Límite de 1500 nodos en la vista global, con aviso.
+- Posiciones guardadas por vista (tabla `NodeLayout`, separada de los datos del nodo), con upsert en lote que ignora nodos ajenos. También se pueden reiniciar.
+- `GET /graph/issues`:
+  - Nodos aislados.
+  - Tareas terminadas que dependen de algo abierto.
+  - Contenedores terminados con trabajo abierto.
+  - Dependencias de elementos archivados.
+  - Posibles duplicados por similitud de títulos, sin repetir los pares ya marcados como `DUPLICATES`.
+- Sin base de datos de grafos: una tabla de aristas y un recorrido en memoria alcanzan para la escala personal.
+
+**Web** (React Flow 12 + elkjs)
+- Zoom, desplazamiento, minimapa y controles. Modo claro y oscuro.
+- Nodos con tipo, estado y fecha. Estilos por categoría de relación: jerarquía en línea gris, dependencias con flecha naranja, conceptuales con línea punteada, y etiquetas con el nombre de la relación.
+- Interacción:
+  - Click en un nodo: abre el panel de detalle (la misma selección `?node=` del resto de la app).
+  - Click en una relación: muestra qué relación es y permite quitarla, con confirmación.
+- Edición:
+  - Conectar arrastrando de un nodo a otro, y elegir el tipo de relación entre las permitidas, en ambas direcciones.
+  - Crear un nodo con doble click en el lienzo o con el botón "Nodo".
+  - Seleccionar varios nodos (Shift + arrastrar) para enfocar o eliminar.
+- Vistas:
+  - "Todo" o "Enfocado", con saltos configurables y guardados en la URL.
+  - Botón "+N" para expandir un nodo y descubrir sus conexiones.
+  - Si el elemento abierto no está en la vista, avisa y permite mostrarlo.
+- Filtros por tipo, relación y completadas. La búsqueda resalta coincidencias y atenúa el resto, y con Enter abre la primera.
+- Posiciones:
+  - Ordenamiento automático con elkjs la primera vez.
+  - Los nodos nuevos se ubican junto a un vecino, sin mover lo que acomodaste a mano.
+  - Las posiciones se guardan al soltar un nodo, y "Reordenar" las recalcula.
+- Panel "Revisar" con los problemas detectados. Click en un elemento lo abre y lo centra.
+- Enlace "Ver en el grafo" desde el panel de detalle y "Árbol" como alternativa sin grafo.
+
+### Pruebas ejecutadas
+- `npm test`: 69 en verde (4 en `shared` y 65 en la API, de los cuales 11 son nuevos de grafo: vistas global y enfocada, expansión desde varios nodos, filtros, reflejo de cambios persistidos, aislamiento entre usuarios, posiciones por vista, problemas).
+- `npm run e2e`: 15 en verde, de los cuales 6 nuevos de grafo:
+  - El grafo muestra lo persistido y abre el detalle.
+  - Conectar arrastrando, elegir "depende de" y verlo en Bloqueadas.
+  - Mover un nodo y conservar la posición al recargar.
+  - Crear un nodo con doble click.
+  - Vista enfocada con expansión y vuelta a "Todo".
+  - Filtros, búsqueda resaltada y panel de problemas.
+- `npm run typecheck` y `npm run build`: sin errores.
+- Revisión visual en modo claro y oscuro.
+
+### Problemas encontrados y corregidos
+- El botón "+N" quedaba encima del punto de conexión y, al hacer click, empezaba a arrastrar una conexión. Se movió a la esquina superior derecha.
+- El botón "+N" no tenía nombre accesible; ahora lo tiene, con el plural correcto.
+- Se volvió a mostrar la atribución de React Flow, porque ocultarla corresponde a la licencia Pro.
+
+### Pendiente / notas
+- En grafos con muchas relaciones cruzadas, el ordenamiento automático puede superponer líneas; se corrige moviendo nodos (la posición queda guardada).
+- La vista previa de nodos y relaciones propuestos por la IA, antes de aceptarlos, llega con la fase 5.
+- En el celular, el grafo se puede explorar y abrir nodos. Para editar relaciones conviene usar el panel o el árbol.
+
+## Fase 5: asistente de IA ⏳

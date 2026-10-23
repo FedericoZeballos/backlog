@@ -11,6 +11,7 @@ import { AdminPage } from './pages/Admin';
 import { InvitePage, LoginPage } from './pages/auth';
 import { DashboardPage } from './pages/Dashboard';
 import { FocusPage } from './pages/Focus';
+import { GraphPage } from './pages/Graph';
 import { InboxPage } from './pages/Inbox';
 import { NotesPage, SearchPage, TrashPage } from './pages/lists';
 import { SettingsPage } from './pages/Settings';
@@ -59,6 +60,7 @@ const router = createBrowserRouter([
           { path: 'backlog', element: <BacklogPage /> },
           { path: 'projects', element: <ProjectsPage /> },
           { path: 'goals', element: <GoalsPage /> },
+          { path: 'graph', element: <GraphPage /> },
           { path: 'notes', element: <NotesPage /> },
           { path: 'trash', element: <TrashPage /> },
           { path: 'search', element: <SearchPage /> },

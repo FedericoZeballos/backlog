@@ -1,4 +1,4 @@
-import { Archive, ArchiveRestore, Focus, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, Focus, Network, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { errorMessage } from '../../api/client';
@@ -128,6 +128,9 @@ function NodeActions({ nodeId, version, archived }: { nodeId: string; version: n
     <div className="flex flex-wrap gap-2 border-t border-line pt-4">
       <Link className="btn" to={`/focus/${nodeId}`}>
         <Focus className="size-4" aria-hidden /> Modo foco
+      </Link>
+      <Link className="btn" to={`/graph?focus=${nodeId}&depth=1&node=${nodeId}`}>
+        <Network className="size-4" aria-hidden /> Ver en el grafo
       </Link>
       <button
         className="btn"

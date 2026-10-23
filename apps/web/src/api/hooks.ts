@@ -3,6 +3,9 @@ import type {
   CommentDTO,
   CreateEdgeInput,
   CreateNodeInput,
+  EdgeCategory,
+  GraphDTO,
+  GraphIssueDTO,
   InvitationDTO,
   NodeDetailDTO,
   NodeDTO,
@@ -23,7 +26,7 @@ import { api, ApiError } from './client';
 // ---------- Cache invalidation ----------
 
 /** Anything that changes nodes or relations can affect every list, view and tree. */
-const GRAPH_KEYS = new Set(['nodes', 'view', 'tree', 'node', 'activity', 'similar']);
+const GRAPH_KEYS = new Set(['nodes', 'view', 'tree', 'node', 'activity', 'similar', 'graph', 'graph-issues']);
 
 export function invalidateGraph(qc: QueryClient) {
   return qc.invalidateQueries({ predicate: (q) => GRAPH_KEYS.has(q.queryKey[0] as string) });
@@ -237,6 +240,59 @@ export function useTree() {
   return useQuery({
     queryKey: ['tree'],
     queryFn: async () => (await api<{ items: TreeNodeDTO[] }>('/tree')).items,
+  });
+}
+
+// ---------- Graph ----------
+
+export interface GraphParams {
+  focus?: string[];
+  depth?: number;
+  type?: NodeType[];
+  category?: EdgeCategory[];
+  hideDone?: boolean;
+  viewKey: string;
+}
+
+export function useGraph(params: GraphParams) {
+  return useQuery({
+    queryKey: ['graph', params],
+    queryFn: () =>
+      api<GraphDTO>('/graph', {
+        query: {
+          focus: params.focus?.join(','),
+          depth: params.depth,
+          type: params.type?.join(','),
+          category: params.category?.join(','),
+          hideDone: params.hideDone,
+          viewKey: params.viewKey,
+        },
+      }),
+    placeholderData: (prev) => prev,
+  });
+}
+
+export function useGraphIssues(enabled: boolean) {
+  return useQuery({
+    queryKey: ['graph-issues'],
+    queryFn: async () => (await api<{ items: GraphIssueDTO[] }>('/graph/issues')).items,
+    enabled,
+  });
+}
+
+/** Positions are UI state: saving them must not refetch the graph. */
+export function useSaveLayout() {
+  return useMutation({
+    mutationFn: (body: { viewKey: string; positions: { nodeId: string; x: number; y: number }[] }) =>
+      api<void>('/graph/layout', { method: 'PUT', body }),
+  });
+}
+
+export function useResetLayout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (viewKey: string) => api<void>('/graph/layout', { method: 'DELETE', query: { viewKey } }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['graph'] }),
   });
 }
 
