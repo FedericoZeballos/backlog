@@ -1,6 +1,7 @@
+import { Sparkles } from 'lucide-react';
 import { useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import { useBlockedView, useMe, useNodes, useTodayView, useTree, useUpcomingView } from '../api/hooks';
+import { useBlockedView, useMe, useNodes, useRecommend, useTodayView, useTree, useUpcomingView } from '../api/hooks';
 import { NodeList, NodeRow } from '../components/NodeList';
 import { QuickCapture } from '../components/QuickCapture';
 import { buildTree, ProgressBar, progressOf } from '../components/Tree';
@@ -24,6 +25,53 @@ function Card({ title, to, count, children }: { title: string; to: string; count
 }
 
 const Empty = ({ text }: { text: string }) => <p className="card px-4 py-3 text-sm text-muted">{text}</p>;
+
+/** What to do next: today's first item, or the assistant's pick with its reason. */
+function NextUp({ first }: { first: { id: string; title: string; nextAction: string | null } | null }) {
+  const recommend = useRecommend();
+  const { open } = useSelectedNode();
+  const rec = recommend.data;
+  const shown = rec ? { id: rec.node.id, title: rec.node.title } : first;
+
+  return (
+    <section className="card border-accent/30 p-4" aria-label="Qué hacer ahora">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-accent">
+          {rec ? (rec.byAI ? 'Recomendación del asistente' : 'Recomendación por prioridad y fecha') : 'Para empezar'}
+        </p>
+        <button className="btn py-1 text-xs" onClick={() => recommend.mutate()} disabled={recommend.isPending}>
+          <Sparkles className="size-3.5" aria-hidden />
+          {recommend.isPending ? 'Pensando…' : '¿Qué hago ahora?'}
+        </button>
+      </div>
+      {recommend.isSuccess && !rec && <p className="mt-2 text-sm text-muted">No hay tareas pendientes sin bloqueos.</p>}
+      {shown && (
+        <>
+          <button className="mt-1 text-left text-[15px] font-semibold hover:underline" onClick={() => open(shown.id)}>
+            {shown.title}
+          </button>
+          {rec ? (
+            <>
+              <p className="mt-1 text-sm">{rec.reason}</p>
+              <p className="mt-1 text-sm text-muted">Para arrancar: {rec.firstStep}</p>
+            </>
+          ) : (
+            <>
+              {first?.nextAction && <p className="mt-1 text-sm text-muted">Siguiente paso: {first.nextAction}</p>}
+              <p className="mt-2 text-xs text-muted">La primera de hoy por prioridad y fecha.</p>
+            </>
+          )}
+          <Link to={`/focus/${shown.id}`} className="btn mt-3">
+            Entrar en modo foco
+          </Link>
+        </>
+      )}
+      {!shown && !recommend.isSuccess && (
+        <p className="mt-2 text-sm text-muted">Nada para hoy. Pedile al asistente que elija entre tus pendientes.</p>
+      )}
+    </section>
+  );
+}
 
 export function DashboardPage() {
   const { data: me } = useMe();
@@ -55,19 +103,7 @@ export function DashboardPage() {
 
       <QuickCapture />
 
-      {next && (
-        <section className="card border-accent/30 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-accent">Para empezar</p>
-          <button className="mt-1 text-left text-[15px] font-semibold hover:underline" onClick={() => open(next.id)}>
-            {next.title}
-          </button>
-          {next.nextAction && <p className="mt-1 text-sm text-muted">Siguiente paso: {next.nextAction}</p>}
-          <p className="mt-2 text-xs text-muted">La primera de hoy por prioridad y fecha. La recomendación con IA llega más adelante.</p>
-          <Link to={`/focus/${next.id}`} className="btn mt-3">
-            Entrar en modo foco
-          </Link>
-        </section>
-      )}
+      <NextUp first={next ? { id: next.id, title: next.title, nextAction: next.nextAction } : null} />
 
       <div className="grid gap-8 lg:grid-cols-2">
         <Card title="Hoy" to="/today" count={today.data?.items.length}>

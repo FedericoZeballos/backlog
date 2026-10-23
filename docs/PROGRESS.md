@@ -169,4 +169,47 @@ Seguir el [README](../README.md) y probar con curl, o correr `npm test`.
 - La vista previa de nodos y relaciones propuestos por la IA, antes de aceptarlos, llega con la fase 5.
 - En el celular, el grafo se puede explorar y abrir nodos. Para editar relaciones conviene usar el panel o el árbol.
 
-## Fase 5: asistente de IA ⏳
+## Fase 5: asistente de IA ✅ (2026-10-23)
+
+### Implementado
+- **Proveedores intercambiables**:
+  - Ollama local, con un JSON Schema en `format`, un reintento ante formato inválido y errores claros.
+  - Claude, con salidas estructuradas y `fallbacks: "default"`.
+  - Modo de prueba `FAKE`, determinista.
+  - Cada usuario elige proveedor y modelo en Configuración. Las URLs y las claves quedan solo en el servidor.
+- **Conversación por elemento**, persistida y retomable: interpretación, supuestos marcados como sin confirmar, y hasta 3 preguntas priorizadas solo si cambian el plan.
+- **Propuestas revisables**:
+  - Qué incluyen: campos refinados con los inferidos marcados, contenedor, pasos con dependencias, relaciones con lo existente, preguntas pendientes y riesgos.
+  - Antes de guardarse, el backend verifica:
+    - que las refs existan;
+    - que las relaciones estén permitidas;
+    - que no haya ciclos ni duplicados de elementos existentes.
+  - Repara errores típicos de modelos chicos: refs con texto pegado, "depende de una nota" que pasa a "la nota aporta información", un elemento existente copiado como paso nuevo. Todo lo que ajusta o descarta queda informado.
+- **Aplicación** selectiva, editable, atómica e idempotente. Queda registrada con la IA como actor. La prioridad aceptada se sigue mostrando como "sugerida por IA".
+- **Recomendación** "¿Qué hago ahora?" entre las tareas sin bloqueos, con motivo y primer paso. Si la IA no está disponible, usa el orden por prioridad y fecha.
+- **Modo foco**: botón "Reducir con IA". **Bandeja**: "Procesar con IA".
+- **Seguridad**: el contenido del usuario va delimitado como datos y no puede cerrar los delimitadores. Hay un solo pedido de IA por usuario a la vez (doble click: 409) y límite de frecuencia. Si la IA falla, no se pierde el mensaje del usuario ni quedan datos a medias.
+- `npm run ai:smoke`: prueba el modelo configurado con un caso de ejemplo, sin tocar la base.
+
+### Pruebas ejecutadas
+- `npm test`: 98 en verde.
+  - Fase 5: conversación, contexto e inyección de prompts, validación de propuestas, aplicación parcial, idempotente y atómica, fallas del proveedor, pedidos simultáneos, aislamiento entre usuarios y recomendación.
+  - Proveedor Ollama contra un servidor HTTP simulado.
+  - Validador con salidas reales de qwen2.5.
+- `npm run e2e`: 19 en verde. Los 4 nuevos usan el modo de prueba: procesar con IA, responder, proponer, aplicar una parte y verlo en el árbol; descartar y retomar; "¿Qué hago ahora?"; configuración.
+- **Con Ollama real** (Windows, GTX 1050 de 4 GB y 24 GB de RAM):
+  - `qwen2.5:7b`: buena calidad, pero 55 % del modelo corre en CPU, con 2,5 a 4 minutos por respuesta. El timeout está en 6 minutos.
+  - `qwen2.5:3b`: 100 % en la placa, 17 a 50 s por respuesta. Calidad aceptable y más desprolija.
+  - Flujo completo verificado contra la API real con el 3b: turno (17 s), propuesta (28 s) y aplicación. El resultado fue un proyecto dentro del objetivo correcto, con sus tareas y el historial con la IA como actor.
+- Claude: implementado y con typecheck, pero **no probado contra la API real** (no hay `ANTHROPIC_API_KEY`).
+
+### Problemas encontrados y corregidos
+- La búsqueda de candidatos exigía todas las palabras y no encontraba elementos relacionados. Ahora busca por cualquier palabra significativa, ordenada por relevancia.
+- En Chromium, `scrollIntoView()` devuelve una Promise, y un `useEffect` con cuerpo de expresión rompía la pantalla.
+- Ollama no pudo crear la carpeta de modelos en `D:\ollama` por permisos de Windows. Se usa `D:\Documents\ollama\models`.
+
+### Pendiente / notas
+- La vista previa de la propuesta como nodos "fantasma" en el grafo no está hecha; la revisión se hace en el panel.
+- El test e2e de móvil falló una vez de forma intermitente con la máquina muy cargada y después pasó.
+
+## Fase 6: Obsidian ⏳

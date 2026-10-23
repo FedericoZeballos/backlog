@@ -1,4 +1,9 @@
 import type {
+  AIProviderName,
+  AIStatusDTO,
+  ApplyProposalInput,
+  ConversationDTO,
+  RecommendationDTO,
   ActivityDTO,
   CommentDTO,
   CreateEdgeInput,
@@ -26,7 +31,7 @@ import { api, ApiError } from './client';
 // ---------- Cache invalidation ----------
 
 /** Anything that changes nodes or relations can affect every list, view and tree. */
-const GRAPH_KEYS = new Set(['nodes', 'view', 'tree', 'node', 'activity', 'similar', 'graph', 'graph-issues']);
+const GRAPH_KEYS = new Set(['nodes', 'view', 'tree', 'node', 'activity', 'similar', 'graph', 'graph-issues', 'conversation']);
 
 export function invalidateGraph(qc: QueryClient) {
   return qc.invalidateQueries({ predicate: (q) => GRAPH_KEYS.has(q.queryKey[0] as string) });
@@ -293,6 +298,74 @@ export function useResetLayout() {
   return useMutation({
     mutationFn: (viewKey: string) => api<void>('/graph/layout', { method: 'DELETE', query: { viewKey } }),
     onSettled: () => qc.invalidateQueries({ queryKey: ['graph'] }),
+  });
+}
+
+// ---------- AI assistant ----------
+
+export function useAIStatus() {
+  return useQuery({
+    queryKey: ['ai-status'],
+    queryFn: () => api<AIStatusDTO>('/ai/status'),
+    staleTime: 30_000,
+  });
+}
+
+export function useSaveAISettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { provider: AIProviderName; model: string }) => api('/ai/settings', { method: 'PUT', body }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['ai-status'] }),
+  });
+}
+
+export function useConversation(nodeId: string) {
+  return useQuery({
+    queryKey: ['conversation', nodeId],
+    queryFn: async () => (await api<{ conversation: ConversationDTO | null }>(`/ai/nodes/${nodeId}/conversation`)).conversation,
+  });
+}
+
+/** Model calls return the whole conversation; it goes straight into the cache. */
+function useConversationMutation<TVars>(nodeId: string, fn: (vars: TVars) => Promise<{ conversation: ConversationDTO }>, touchesGraph = false) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: ({ conversation }) => qc.setQueryData(['conversation', nodeId], conversation),
+    // A failed turn may still have saved the user's message.
+    onError: () => qc.invalidateQueries({ queryKey: ['conversation', nodeId] }),
+    onSettled: () => (touchesGraph ? invalidateGraph(qc) : undefined),
+  });
+}
+
+export const useAITurn = (nodeId: string) =>
+  useConversationMutation(nodeId, (message?: string) =>
+    api<{ conversation: ConversationDTO }>(`/ai/nodes/${nodeId}/turn`, { method: 'POST', body: { message } }),
+  );
+
+export const usePropose = (nodeId: string) =>
+  useConversationMutation(nodeId, (mode: 'plan' | 'reduce') =>
+    api<{ conversation: ConversationDTO }>(`/ai/nodes/${nodeId}/propose`, { method: 'POST', body: { mode } }),
+  );
+
+export const useApplyProposal = (nodeId: string) =>
+  useConversationMutation(
+    nodeId,
+    ({ id, ...body }: ApplyProposalInput & { id: string }) =>
+      api<{ conversation: ConversationDTO }>(`/ai/proposals/${id}/apply`, { method: 'POST', body }),
+    true,
+  );
+
+export const useRejectProposal = (nodeId: string) =>
+  useConversationMutation(nodeId, (id: string) =>
+    api<{ conversation: ConversationDTO }>(`/ai/proposals/${id}/reject`, { method: 'POST' }),
+  );
+
+export function useRecommend() {
+  return useMutation({
+    mutationFn: async () =>
+      (await api<{ recommendation: RecommendationDTO | null }>('/ai/recommend', { method: 'POST', body: { date: localDate() } }))
+        .recommendation,
   });
 }
 

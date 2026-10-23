@@ -1,8 +1,16 @@
-import { STATUS_CATEGORIES, type StatusCategory, type StatusDTO } from '@backlog/shared';
+import { STATUS_CATEGORIES, type AIProviderName, type StatusCategory, type StatusDTO } from '@backlog/shared';
 import { ArrowDown, ArrowUp, Star, Trash2 } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { ApiError, errorMessage } from '../api/client';
-import { useCreateStatus, useDeleteStatus, useReorderStatuses, useStatuses, useUpdateStatus } from '../api/hooks';
+import {
+  useAIStatus,
+  useCreateStatus,
+  useDeleteStatus,
+  useReorderStatuses,
+  useSaveAISettings,
+  useStatuses,
+  useUpdateStatus,
+} from '../api/hooks';
 import { Modal, useToast } from '../components/feedback';
 import { Loading, PageHeader } from '../components/NodeList';
 import { CATEGORY_LABEL } from '../lib/labels';
@@ -11,14 +19,117 @@ export function SettingsPage() {
   return (
     <>
       <PageHeader title="Configuración" />
-      <StatusesSettings />
-      <section className="mt-8">
-        <h2 className="text-base font-semibold">Integraciones</h2>
-        <p className="mt-1 text-sm text-muted">
-          El asistente de IA (Claude / Ollama) y la exportación a Obsidian se configuran acá cuando estén disponibles.
-        </p>
+      <AISettingsSection />
+      <div className="mt-10">
+        <StatusesSettings />
+      </div>
+      <section className="mt-10">
+        <h2 className="text-base font-semibold">Obsidian</h2>
+        <p className="mt-1 text-sm text-muted">La exportación a Obsidian se configura acá cuando esté disponible.</p>
       </section>
     </>
+  );
+}
+
+const PROVIDERS: { id: AIProviderName; label: string; hint: string }[] = [
+  { id: 'OLLAMA', label: 'Ollama (local)', hint: 'Gratis y privado: corre en tu computadora. Más lento.' },
+  { id: 'ANTHROPIC', label: 'Claude (Anthropic)', hint: 'Más rápido y preciso. Pago por uso; requiere clave en el servidor.' },
+  { id: 'FAKE', label: 'Modo de prueba', hint: 'Respuestas fijas, sin IA real. Útil para probar el flujo.' },
+];
+
+function AISettingsSection() {
+  const { data: status, isLoading, refetch, isFetching } = useAIStatus();
+  const save = useSaveAISettings();
+  const toast = useToast();
+  const [provider, setProvider] = useState<AIProviderName | null>(null);
+  const [model, setModel] = useState('');
+
+  useEffect(() => {
+    if (status && provider === null) {
+      setProvider(status.provider);
+      setModel(status.model);
+    }
+  }, [status, provider]);
+
+  if (isLoading || !status || !provider) return <Loading />;
+  const dirty = provider !== status.provider || model.trim() !== status.model;
+  const ollamaModels = status.installedModels;
+
+  function choose(p: AIProviderName) {
+    setProvider(p);
+    if (p === 'FAKE') setModel('modo-de-prueba');
+    else if (p === 'ANTHROPIC') setModel('claude-opus-5-5');
+    else setModel(ollamaModels.includes('qwen2.5:7b') ? 'qwen2.5:7b' : (ollamaModels[0] ?? 'qwen2.5:7b'));
+  }
+
+  return (
+    <section aria-labelledby="ai-title">
+      <h2 id="ai-title" className="text-base font-semibold">
+        Asistente de IA
+      </h2>
+      <p className={`mt-1 flex items-center gap-1.5 text-sm ${status.available ? 'text-ok' : 'text-warn'}`} role="status">
+        <span className={`size-2 rounded-full ${status.available ? 'bg-ok' : 'bg-warn'}`} aria-hidden />
+        {status.detail}
+        <button className="ml-1 text-xs text-muted underline" onClick={() => refetch()} disabled={isFetching}>
+          {isFetching ? 'verificando…' : 'verificar'}
+        </button>
+      </p>
+
+      <fieldset className="mt-3 space-y-2">
+        <legend className="sr-only">Proveedor</legend>
+        {PROVIDERS.map((p) => (
+          <label key={p.id} className={`flex cursor-pointer items-start gap-2 rounded-md border px-3 py-2 ${provider === p.id ? 'border-accent bg-accent/5' : 'border-line'}`}>
+            <input type="radio" name="provider" className="mt-1 accent-[var(--color-accent)]" checked={provider === p.id} onChange={() => choose(p.id)} />
+            <span>
+              <span className="text-sm font-medium">{p.label}</span>
+              <span className="block text-xs text-muted">{p.hint}</span>
+              {p.id === 'ANTHROPIC' && !status.anthropicConfigured && (
+                <span className="block text-xs text-warn">Falta ANTHROPIC_API_KEY en apps/api/.env</span>
+              )}
+            </span>
+          </label>
+        ))}
+      </fieldset>
+
+      {provider !== 'FAKE' && (
+        <label className="mt-3 block max-w-sm">
+          <span className="label">Modelo</span>
+          {provider === 'OLLAMA' && ollamaModels.length > 0 ? (
+            <select className="input" value={model} onChange={(e) => setModel(e.target.value)}>
+              {!ollamaModels.includes(model) && <option value={model}>{model} (no instalado)</option>}
+              {ollamaModels.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input className="input" value={model} onChange={(e) => setModel(e.target.value)} />
+          )}
+          {provider === 'OLLAMA' && (
+            <span className="mt-1 block text-xs text-muted">
+              Con 4 GB de video: qwen2.5:7b responde mejor pero tarda 2–4 minutos; qwen2.5:3b tarda menos de un minuto.
+            </span>
+          )}
+        </label>
+      )}
+
+      <button
+        className="btn btn-primary mt-3"
+        disabled={!dirty || !model.trim() || save.isPending}
+        onClick={() =>
+          save.mutate(
+            { provider, model: model.trim() },
+            {
+              onSuccess: () => toast({ message: 'Asistente configurado' }),
+              onError: (err) => toast({ message: errorMessage(err), tone: 'error' }),
+            },
+          )
+        }
+      >
+        Guardar
+      </button>
+    </section>
   );
 }
 

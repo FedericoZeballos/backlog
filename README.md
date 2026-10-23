@@ -37,6 +37,14 @@ npm run dev
 
 Abrí **http://localhost:5173** e iniciá sesión con el usuario que creaste. La API queda en `http://localhost:3000` y la web le pasa las llamadas `/api` a través de un proxy.
 
+### Asistente de IA (Ollama local)
+
+1. Ollama tiene que estar abierto (se inicia con Windows; si no, abrilo desde el menú Inicio). Los modelos están en `D:\Documents\ollama\models`.
+2. En la app: **Configuración → Asistente de IA**, elegí `qwen2.5:7b` (mejor, 2-4 min) o `qwen2.5:3b` (rápido, menos preciso).
+3. Para probar el modelo sin la app: `npm run ai:smoke -w @backlog/api -- --provider OLLAMA --model qwen2.5:3b`.
+
+Sin IA instalada, elegí "Modo de prueba" para ver el flujo con respuestas fijas.
+
 ### Atajos
 
 - `N`: captura rápida desde cualquier pantalla.

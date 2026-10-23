@@ -4,7 +4,8 @@ import { Link } from 'react-router';
 import { errorMessage } from '../../api/client';
 import { useDeleteNode, useNode, usePurgeNode, useRestoreNode, useUpdateNode } from '../../api/hooks';
 import { formatDateTime } from '../../lib/dates';
-import { useSelectedNode } from '../../lib/selection';
+import { useSelectedNode, type PanelTab } from '../../lib/selection';
+import { Assistant } from '../assistant/Assistant';
 import { TypeBadge } from '../badges';
 import { useConfirm, useToast } from '../feedback';
 import { Comments } from './Comments';
@@ -15,18 +16,18 @@ import { Relations } from './Relations';
 
 const TABS = [
   { id: 'detail', label: 'Detalle' },
+  { id: 'assistant', label: 'Asistente' },
   { id: 'relations', label: 'Relaciones' },
   { id: 'comments', label: 'Comentarios' },
   { id: 'history', label: 'Historial' },
-] as const;
-type Tab = (typeof TABS)[number]['id'];
+] as const satisfies readonly { id: PanelTab; label: string }[];
 
 /** Side panel for the node in `?node=`; available from every view. */
 export function DetailPanel() {
-  const { id, close } = useSelectedNode();
-  const [tab, setTab] = useState<Tab>('detail');
+  const { id, close, tab: requestedTab } = useSelectedNode();
+  const [tab, setTab] = useState<PanelTab>('detail');
   const { data, error, isLoading } = useNode(id);
-  useEffect(() => setTab('detail'), [id]);
+  useEffect(() => setTab(requestedTab ?? 'detail'), [id, requestedTab]);
 
   useEffect(() => {
     if (!id) return;
@@ -64,7 +65,7 @@ export function DetailPanel() {
       {data && (
         <>
           {data.node.deletedAt && <TrashBanner nodeId={data.node.id} />}
-          <nav className="flex gap-1 border-b border-line px-3" role="tablist">
+          <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-line px-3" role="tablist">
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -88,6 +89,7 @@ export function DetailPanel() {
                 {!data.node.deletedAt && <NodeActions nodeId={data.node.id} version={data.node.version} archived={!!data.node.archivedAt} />}
               </div>
             )}
+            {tab === 'assistant' && <Assistant key={data.node.id} node={data.node} />}
             {tab === 'relations' && <Relations node={data.node} relations={data.relations} />}
             {tab === 'comments' && <Comments nodeId={data.node.id} />}
             {tab === 'history' && <History nodeId={data.node.id} />}

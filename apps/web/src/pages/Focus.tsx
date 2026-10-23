@@ -1,5 +1,5 @@
 import { RELATION_RULES, type RelationDTO, type TreeNodeDTO } from '@backlog/shared';
-import { ArrowLeft, CheckCircle2, Circle, Lock } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Circle, Lock, Scissors } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { errorMessage } from '../api/client';
@@ -9,6 +9,7 @@ import { useToast } from '../components/feedback';
 import { Loading, QueryError } from '../components/NodeList';
 import { useCompletion } from '../lib/completion';
 import { TYPE_LABEL } from '../lib/labels';
+import { useSelectedNode } from '../lib/selection';
 
 function ancestors(tree: TreeNodeDTO[] | undefined, id: string): TreeNodeDTO[] {
   const byId = new Map((tree ?? []).map((n) => [n.id, n]));
@@ -43,6 +44,7 @@ export function FocusPage() {
   const tree = useTree();
   const navigate = useNavigate();
   const { toggle } = useCompletion();
+  const { open } = useSelectedNode();
 
   if (isLoading) return <Loading />;
   if (error || !data) return <QueryError error={error} />;
@@ -157,9 +159,18 @@ export function FocusPage() {
             {done ? 'Reabrir' : 'Marcar como terminada'}
           </button>
         )}
-        <Link to={`/?node=${node.id}`} className="btn">
+        <button className="btn" onClick={() => open(node.id)}>
           Editar detalles
-        </Link>
+        </button>
+        {!done && (
+          <button
+            className="btn"
+            onClick={() => open(node.id, { tab: 'assistant', start: 'reduce' })}
+            title="El asistente lo parte en pasos chicos hasta tener algo para hacer hoy"
+          >
+            <Scissors className="size-4" aria-hidden /> Reducir con IA
+          </button>
+        )}
         {missing && <span className="text-xs text-muted">Completar lo que falta ayuda a arrancar.</span>}
       </div>
     </div>

@@ -1,5 +1,6 @@
 import type { NodeDTO, NodeType } from '@backlog/shared';
-import { Trash2 } from 'lucide-react';
+import { Sparkles, Trash2 } from 'lucide-react';
+import { useSelectedNode } from '../lib/selection';
 import { useState } from 'react';
 import { errorMessage } from '../api/client';
 import { useDeleteNode, useNodes, useRestoreNode, useUpdateNode } from '../api/hooks';
@@ -20,6 +21,7 @@ export function InboxPage() {
   const restore = useRestoreNode();
   const toast = useToast();
   const confirm = useConfirm();
+  const { open } = useSelectedNode();
 
   const items = data?.items ?? [];
   const chosen = items.filter((n) => selected.has(n.id));
@@ -98,6 +100,14 @@ export function InboxPage() {
               actions={
                 <>
                   <span className="hidden text-xs text-muted sm:inline">{timeAgo(n.createdAt)}</span>
+                  <button
+                    className="btn px-2 py-1 text-xs"
+                    onClick={() => open(n.id, { tab: 'assistant', start: 'analyze' })}
+                    title="Que el asistente lo analice y proponga cómo organizarlo"
+                  >
+                    <Sparkles className="size-3.5" aria-hidden />
+                    <span className="hidden sm:inline">Procesar con IA</span>
+                  </button>
                   <ClassifyMenu onPick={(t) => classify([n], t)} label="Clasificar" />
                 </>
               }

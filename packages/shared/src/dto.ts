@@ -176,7 +176,7 @@ export interface AIProposalDTO {
   status: 'PENDING' | 'ACCEPTED' | 'PARTIAL' | 'REJECTED';
   payload: ProposalPayload;
   warnings: string[];
-  result: { created: NodeBrief[]; relations: number; updatedFields: string[] } | null;
+  result: { created: NodeBrief[]; relations: number; updatedFields: string[]; skipped: string[] } | null;
   provider: AIProviderName;
   model: string;
   createdAt: string;
