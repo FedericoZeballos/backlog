@@ -1,6 +1,9 @@
 /**
  * Creates the first administrator (there is no public signup).
+ *   npm run create-admin vos@ejemplo.com "Tu nombre"
  *   npm run create-admin -- --email vos@ejemplo.com --name "Tu nombre"
+ * Positional arguments exist because PowerShell drops the `--` separator and npm then
+ * swallows --email/--name as its own options, passing only the bare values.
  * The password is asked interactively, or read from ADMIN_PASSWORD.
  * If the email already exists, that user is promoted to ADMIN.
  */
@@ -11,13 +14,16 @@ import { z } from 'zod';
 import { prisma } from '../src/lib/prisma';
 import { createUser } from '../src/modules/users/service';
 
-const { values } = parseArgs({
+const { values, positionals } = parseArgs({
   options: { email: { type: 'string' }, name: { type: 'string' } },
+  allowPositionals: true,
 });
+values.email ??= positionals[0];
+values.name ??= positionals.slice(1).join(' ') || undefined;
 
 const email = z.email().trim().toLowerCase().safeParse(values.email);
 if (!email.success) {
-  console.error('Uso: npm run create-admin -- --email vos@ejemplo.com --name "Tu nombre"');
+  console.error('Uso: npm run create-admin vos@ejemplo.com "Tu nombre"');
   process.exit(1);
 }
 

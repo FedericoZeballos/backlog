@@ -26,7 +26,7 @@ npm run db
 Terminal 2, crear tu usuario administrador (te pide la contraseña):
 
 ```bash
-npm run create-admin -- --email vos@ejemplo.com --name "Tu nombre"
+npm run create-admin vos@ejemplo.com "Tu nombre"
 ```
 
 Después levantá la app (API + web):
@@ -57,7 +57,7 @@ Sin IA instalada, elegí "Modo de prueba" para ver el flujo con respuestas fijas
 |---|---|
 | `npm run db` | Levanta PostgreSQL local (puerto 5433) y aplica migraciones |
 | `npm run dev` | API y web con recarga automática |
-| `npm run create-admin -- --email … --name …` | Crea un administrador (o promueve un usuario existente) |
+| `npm run create-admin email "Nombre"` | Crea un administrador (o promueve un usuario existente) |
 | `npm test` | Tests unitarios y de integración; usan su propio PostgreSQL en el puerto 5434 |
 | `npm run e2e` | Tests de punta a punta en Chromium, en escritorio y móvil. Levantan su propia API y su base en el puerto 5435. La primera vez, corré `npx playwright install chromium` desde `apps/web` |
 | `npm run typecheck` | Chequeo de tipos de todos los paquetes |
