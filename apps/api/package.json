@@ -9,6 +9,7 @@
     "migrate:dev": "prisma migrate dev",
     "create-admin": "tsx scripts/create-admin.ts",
     "e2e:server": "tsx scripts/e2e-server.ts",
+    "ai:smoke": "tsx scripts/ai-smoke.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate"

@@ -93,6 +93,9 @@ model User {
   statuses           Status[]
   comments           Comment[]
   layouts            NodeLayout[]
+  conversations      Conversation[]
+  proposals          AIProposal[]
+  aiSettings         AISettings?
   activity           ActivityLog[]
   invitationsCreated Invitation[] @relation("InvitationCreatedBy")
   invitationUsed     Invitation?  @relation("InvitationUsedBy")
@@ -172,8 +175,9 @@ model Node {
   outgoing Edge[]        @relation("EdgeSource")
   incoming Edge[]        @relation("EdgeTarget")
   activity ActivityLog[]
-  comments Comment[]
-  layouts  NodeLayout[]
+  comments      Comment[]
+  layouts       NodeLayout[]
+  conversations Conversation[]
 
   // Search indexes (full text + trigram) are created in SQL: see migration *_search_comments.
   @@unique([ownerId, slug])
@@ -212,6 +216,89 @@ model Comment {
   updatedAt DateTime @updatedAt
 
   @@index([nodeId, createdAt])
+}
+
+enum AIProvider {
+  OLLAMA
+  ANTHROPIC
+  FAKE
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
+enum ProposalStatus {
+  PENDING
+  ACCEPTED
+  PARTIAL
+  REJECTED
+}
+
+/// Per-user assistant choice. Endpoints and keys stay in server env (no user-supplied URLs).
+model AISettings {
+  userId    String     @id @db.Uuid
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider  AIProvider
+  model     String
+  updatedAt DateTime   @updatedAt
+}
+
+/// One refinement dialogue, usually about a single node; kept so it can be resumed.
+model Conversation {
+  id        String   @id @default(uuid()) @db.Uuid
+  ownerId   String   @db.Uuid
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  nodeId    String?  @db.Uuid
+  node      Node?    @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages  Message[]
+  proposals AIProposal[]
+
+  @@index([ownerId, nodeId])
+}
+
+model Message {
+  id             String       @id @default(uuid()) @db.Uuid
+  conversationId String       @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String
+  /// Structured assistant turn (interpretation, questions, ...), validated before saving.
+  structured     Json?
+  provider       AIProvider?
+  model          String?
+  durationMs     Int?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+/// A validated plan the user reviews; nothing touches the graph until it is applied.
+model AIProposal {
+  id             String         @id @default(uuid()) @db.Uuid
+  ownerId        String         @db.Uuid
+  owner          User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  conversationId String         @db.Uuid
+  conversation   Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  nodeId         String?        @db.Uuid
+  /// Node version the proposal was made against (detects stale proposals).
+  nodeVersion    Int?
+  payload        Json
+  /// Items the backend dropped during validation, with the reason.
+  warnings       Json?
+  status         ProposalStatus @default(PENDING)
+  /// What applying created (ids), returned again on a repeated apply.
+  result         Json?
+  appliedAt      DateTime?
+  provider       AIProvider
+  model          String
+  createdAt      DateTime       @default(now())
+
+  @@index([conversationId, createdAt])
 }
 
 /// Graph positions, kept apart from node data. `viewKey` is "global" or "focus:<ids>".

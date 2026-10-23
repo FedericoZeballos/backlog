@@ -6,6 +6,7 @@ import { ZodError } from 'zod';
 import { AppError } from './lib/errors';
 import { prisma } from './lib/prisma';
 import { adminRoutes } from './modules/admin/routes';
+import { aiRoutes } from './modules/ai/routes';
 import { authRoutes } from './modules/auth/routes';
 import { edgeRoutes } from './modules/edges/routes';
 import { nodeRoutes } from './modules/nodes/routes';
@@ -69,6 +70,7 @@ export async function buildApp(opts: BuildOptions = {}) {
       await api.register(taskRoutes);
       await api.register(commentRoutes);
       await api.register(graphRoutes);
+      await api.register(aiRoutes);
     },
     { prefix: '/api' },
   );

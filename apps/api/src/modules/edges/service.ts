@@ -1,7 +1,7 @@
 import { edgeCategory, type Actor, type CreateEdgeInput } from '@backlog/shared';
 import { logActivity } from '../../lib/activity';
 import { notFound } from '../../lib/errors';
-import { lockOwner, prisma } from '../../lib/prisma';
+import { lockOwner, prisma, withTx, type Tx } from '../../lib/prisma';
 import { assertEdgeAllowed } from './rules';
 
 type EdgeRow = Awaited<ReturnType<typeof prisma.edge.create>>;
@@ -19,8 +19,8 @@ export function toEdgeDTO(edge: EdgeRow) {
   };
 }
 
-export async function createEdge(ownerId: string, input: CreateEdgeInput, actor: Actor = 'USER') {
-  return prisma.$transaction(async (tx) => {
+export async function createEdge(ownerId: string, input: CreateEdgeInput, actor: Actor = 'USER', outerTx?: Tx) {
+  return withTx(outerTx, async (tx) => {
     await lockOwner(tx, ownerId);
 
     const endpoints = await tx.node.findMany({

@@ -12,7 +12,7 @@ import {
 import type { Prisma, Status } from '@prisma/client';
 import { logActivity } from '../../lib/activity';
 import { AppError, notFound } from '../../lib/errors';
-import { lockOwner, prisma, type Tx } from '../../lib/prisma';
+import { lockOwner, prisma, withTx, type Tx } from '../../lib/prisma';
 import { uniqueSlug } from '../../lib/slug';
 import { activeEdgeWhere, assertEdgeAllowed, STRUCTURAL_TYPES } from '../edges/rules';
 import { searchNodeIds } from './search';
@@ -114,8 +114,8 @@ export async function getNode(ownerId: string, id: string) {
   };
 }
 
-export async function createNode(ownerId: string, input: CreateNodeInput, actor: Actor = 'USER') {
-  return prisma.$transaction(async (tx) => {
+export async function createNode(ownerId: string, input: CreateNodeInput, actor: Actor = 'USER', outerTx?: Tx) {
+  return withTx(outerTx, async (tx) => {
     await lockOwner(tx, ownerId);
     const status = await resolveStatus(tx, ownerId, input.type, input.statusId);
     const { statusId: _s, dueDate, processed, parentId, ...fields } = input;
@@ -157,8 +157,8 @@ async function attachToParent(tx: Tx, ownerId: string, child: { id: string; type
 }
 
 /** Moves a node in the hierarchy (or detaches it with `parentId: null`) atomically. */
-export async function setParent(ownerId: string, id: string, parentId: string | null, actor: Actor = 'USER') {
-  await prisma.$transaction(async (tx) => {
+export async function setParent(ownerId: string, id: string, parentId: string | null, actor: Actor = 'USER', outerTx?: Tx) {
+  await withTx(outerTx, async (tx) => {
     await lockOwner(tx, ownerId);
     const node = await tx.node.findFirst({ where: { id, ownerId, deletedAt: null }, select: { id: true, type: true } });
     if (!node) throw notFound();
@@ -200,8 +200,8 @@ async function assertEdgesFitType(tx: Tx, nodeId: string, newType: NodeType) {
 
 const NULLABLE_FIELDS = ['priority', 'prioritySource', 'outcome', 'doneCriteria', 'nextAction', 'effort', 'effortSource', 'url'] as const;
 
-export async function updateNode(ownerId: string, id: string, input: UpdateNodeInput, actor: Actor = 'USER') {
-  return prisma.$transaction(async (tx) => {
+export async function updateNode(ownerId: string, id: string, input: UpdateNodeInput, actor: Actor = 'USER', outerTx?: Tx) {
+  return withTx(outerTx, async (tx) => {
     await lockOwner(tx, ownerId);
     const current = await tx.node.findFirst({ where: { id, ownerId, deletedAt: null }, include: nodeInclude });
     if (!current) throw notFound();

@@ -12,7 +12,7 @@ export function buildTestApp() {
 
 export async function resetDb() {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE "NodeLayout", "Comment", "ActivityLog", "Edge", "Node", "Status", "Invitation", "Session", "User" CASCADE',
+    'TRUNCATE "AIProposal", "Message", "Conversation", "AISettings", "NodeLayout", "Comment", "ActivityLog", "Edge", "Node", "Status", "Invitation", "Session", "User" CASCADE',
   );
 }
 

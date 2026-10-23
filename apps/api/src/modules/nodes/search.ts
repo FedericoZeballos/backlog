@@ -27,6 +27,26 @@ export async function searchNodeIds(ownerId: string, q: string): Promise<string[
   return rows.map((r) => r.id);
 }
 
+/**
+ * Like searchNodeIds but matching ANY significant word (stop words dropped), ranked by
+ * relevance. Used to find possibly related items, where requiring every word misses most.
+ */
+export async function relatedNodeIds(ownerId: string, text: string, limit = 10): Promise<string[]> {
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    WITH q AS (
+      SELECT NULLIF(replace(plainto_tsquery('spanish', f_unaccent(${text}))::text, '&', '|'), '')::tsquery AS query
+    )
+    SELECT n.id::text
+    FROM "Node" n, q
+    WHERE n."ownerId" = ${ownerId}::uuid
+      AND n."deletedAt" IS NULL
+      AND q.query IS NOT NULL
+      AND to_tsvector('spanish', f_unaccent(n."title" || ' ' || n."body")) @@ q.query
+    ORDER BY ts_rank(to_tsvector('spanish', f_unaccent(n."title" || ' ' || n."body")), q.query) DESC
+    LIMIT ${limit}`;
+  return rows.map((r) => r.id);
+}
+
 export interface SimilarNode {
   id: string;
   title: string;

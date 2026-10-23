@@ -1,5 +1,6 @@
 // Response shapes of the API (apps/api), consumed by the web client.
 
+import type { AIProviderName, AssistantTurnOutput, ProposalPayload } from './ai';
 import type { EdgeCategory } from './relations';
 import type {
   ActivityAction,
@@ -157,6 +158,54 @@ export interface InvitationDTO {
   revokedAt: string | null;
   createdAt: string;
   usedBy: { id: string; email: string; name: string } | null;
+}
+
+export interface AIMessageDTO {
+  id: string;
+  role: 'USER' | 'ASSISTANT';
+  content: string;
+  structured: AssistantTurnOutput | null;
+  provider: AIProviderName | null;
+  model: string | null;
+  durationMs: number | null;
+  createdAt: string;
+}
+
+export interface AIProposalDTO {
+  id: string;
+  status: 'PENDING' | 'ACCEPTED' | 'PARTIAL' | 'REJECTED';
+  payload: ProposalPayload;
+  warnings: string[];
+  result: { created: NodeBrief[]; relations: number; updatedFields: string[] } | null;
+  provider: AIProviderName;
+  model: string;
+  createdAt: string;
+  appliedAt: string | null;
+}
+
+export interface ConversationDTO {
+  id: string;
+  nodeId: string | null;
+  messages: AIMessageDTO[];
+  proposals: AIProposalDTO[];
+}
+
+export interface AIStatusDTO {
+  provider: AIProviderName;
+  model: string;
+  available: boolean;
+  detail: string;
+  /** Models installed in Ollama (when reachable). */
+  installedModels: string[];
+  anthropicConfigured: boolean;
+}
+
+export interface RecommendationDTO {
+  node: NodeBrief;
+  reason: string;
+  firstStep: string;
+  /** false when the AI was unavailable and the deterministic order was used. */
+  byAI: boolean;
 }
 
 export interface ApiErrorBody {

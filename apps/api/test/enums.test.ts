@@ -12,6 +12,7 @@ describe('shared enums match the Prisma schema', () => {
     ['UserRole', shared.USER_ROLES],
     ['Actor', shared.ACTORS],
     ['ActivityAction', shared.ACTIVITY_ACTIONS],
+    ['AIProvider', shared.AI_PROVIDERS],
   ] as const)('%s', (name, values) => {
     expect(Object.values($Enums[name]).sort()).toEqual([...values].sort());
   });

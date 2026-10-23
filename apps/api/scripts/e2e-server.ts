@@ -12,13 +12,15 @@ const { url, stop } = await startLocalPostgres({ dataDir: 'pg-e2e', port: 5435, 
 // Set before importing the app: env.ts reads these at import time (and .env never overrides them).
 process.env.DATABASE_URL = url;
 process.env.APP_URL = process.env.E2E_APP_URL ?? 'http://localhost:5174';
+// Deterministic assistant: e2e tests must not depend on a local model.
+process.env.AI_PROVIDER = 'FAKE';
 
 const { prisma } = await import('../src/lib/prisma');
 const { createUser } = await import('../src/modules/users/service');
 const { buildApp } = await import('../src/app');
 
 await prisma.$executeRawUnsafe(
-  'TRUNCATE "NodeLayout", "Comment", "ActivityLog", "Edge", "Node", "Status", "Invitation", "Session", "User" CASCADE',
+  'TRUNCATE "AIProposal", "Message", "Conversation", "AISettings", "NodeLayout", "Comment", "ActivityLog", "Edge", "Node", "Status", "Invitation", "Session", "User" CASCADE',
 );
 await prisma.$transaction((tx) => createUser(tx, { ...E2E_USER, role: 'ADMIN' }));
 
